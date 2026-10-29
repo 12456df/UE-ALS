@@ -63,6 +63,12 @@ void UMyALSCharacterMovementComponent::SetSprintHeld(bool bHeld)
     bSprintHeld = bHeld;
 }
 
+void UMyALSCharacterMovementComponent::ResetGaitSelection()
+{
+    bWalkSelected = false;
+    bSprintHeld = false;
+}
+
 void UMyALSCharacterMovementComponent::SetMoveInput(const FVector2D& Input)
 {
     MoveInput = Input;

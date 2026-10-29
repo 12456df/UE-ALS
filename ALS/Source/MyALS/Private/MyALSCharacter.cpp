@@ -1,10 +1,7 @@
 #include "MyALSCharacter.h"
 
 #include "Camera/CameraComponent.h"
-#include "EnhancedInputComponent.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "InputAction.h"
-#include "InputActionValue.h"
 #include "MyALSCharacterMovementComponent.h"
 
 AMyALSCharacter::AMyALSCharacter(const FObjectInitializer& ObjectInitializer)
@@ -27,51 +24,8 @@ AMyALSCharacter::AMyALSCharacter(const FObjectInitializer& ObjectInitializer)
     FollowCamera->bUsePawnControlRotation = false;
 }
 
-void AMyALSCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void AMyALSCharacter::ApplyMoveInput(const FVector2D& Axis)
 {
-    Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-    UEnhancedInputComponent* EnhancedInput = Cast<UEnhancedInputComponent>(PlayerInputComponent);
-    if (!EnhancedInput)
-    {
-        return;
-    }
-
-    if (MoveAction)
-    {
-        EnhancedInput->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMyALSCharacter::HandleMove);
-        EnhancedInput->BindAction(MoveAction, ETriggerEvent::Completed, this, &AMyALSCharacter::HandleMoveCompleted);
-        EnhancedInput->BindAction(MoveAction, ETriggerEvent::Canceled, this, &AMyALSCharacter::HandleMoveCompleted);
-    }
-    if (LookAction)
-    {
-        EnhancedInput->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyALSCharacter::HandleLook);
-    }
-    if (JumpAction)
-    {
-        EnhancedInput->BindAction(JumpAction, ETriggerEvent::Started, this, &AMyALSCharacter::HandleJumpStarted);
-        EnhancedInput->BindAction(JumpAction, ETriggerEvent::Completed, this, &AMyALSCharacter::HandleJumpCompleted);
-    }
-    if (CrouchAction)
-    {
-        EnhancedInput->BindAction(CrouchAction, ETriggerEvent::Started, this, &AMyALSCharacter::HandleCrouchStarted);
-        EnhancedInput->BindAction(CrouchAction, ETriggerEvent::Completed, this, &AMyALSCharacter::HandleCrouchCompleted);
-    }
-    if (WalkAction)
-    {
-        EnhancedInput->BindAction(WalkAction, ETriggerEvent::Started, this, &AMyALSCharacter::HandleWalkStarted);
-    }
-    if (SprintAction)
-    {
-        EnhancedInput->BindAction(SprintAction, ETriggerEvent::Started, this, &AMyALSCharacter::HandleSprintStarted);
-        EnhancedInput->BindAction(SprintAction, ETriggerEvent::Completed, this, &AMyALSCharacter::HandleSprintCompleted);
-        EnhancedInput->BindAction(SprintAction, ETriggerEvent::Canceled, this, &AMyALSCharacter::HandleSprintCompleted);
-    }
-}
-
-void AMyALSCharacter::HandleMove(const FInputActionValue& Value)
-{
-    const FVector2D Axis = Value.Get<FVector2D>();
     if (UMyALSCharacterMovementComponent* Movement = Cast<UMyALSCharacterMovementComponent>(GetCharacterMovement()))
     {
         Movement->SetMoveInput(Axis);
@@ -86,7 +40,7 @@ void AMyALSCharacter::HandleMove(const FInputActionValue& Value)
     AddMovementInput(FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y), Axis.X);
 }
 
-void AMyALSCharacter::HandleMoveCompleted()
+void AMyALSCharacter::ClearMoveInput()
 {
     if (UMyALSCharacterMovementComponent* Movement = Cast<UMyALSCharacterMovementComponent>(GetCharacterMovement()))
     {
@@ -94,34 +48,47 @@ void AMyALSCharacter::HandleMoveCompleted()
     }
 }
 
-void AMyALSCharacter::HandleLook(const FInputActionValue& Value)
+void AMyALSCharacter::ApplyLookInput(const FVector2D& Axis)
 {
-    const FVector2D Axis = Value.Get<FVector2D>();
     AddControllerYawInput(Axis.X);
-    AddControllerPitchInput(Axis.Y);
+    AddControllerPitchInput(-Axis.Y);
 }
 
-void AMyALSCharacter::HandleJumpStarted()
+void AMyALSCharacter::StartJumpInput()
 {
+    // 蹲伏时空格只请求起身；这一按不会继续触发跳跃。
+    if (bIsCrouched || GetCharacterMovement()->bWantsToCrouch)
+    {
+        UnCrouch();
+        return;
+    }
     Jump();
 }
 
-void AMyALSCharacter::HandleJumpCompleted()
+void AMyALSCharacter::StopJumpInput()
 {
     StopJumping();
 }
 
-void AMyALSCharacter::HandleCrouchStarted()
+void AMyALSCharacter::ToggleCrouchInput()
 {
-    Crouch();
+    UMyALSCharacterMovementComponent* Movement = Cast<UMyALSCharacterMovementComponent>(GetCharacterMovement());
+    if (!Movement)
+    {
+        return;
+    }
+
+    if (Movement->bWantsToCrouch || bIsCrouched)
+    {
+        UnCrouch();
+    }
+    else
+    {
+        Crouch();
+    }
 }
 
-void AMyALSCharacter::HandleCrouchCompleted()
-{
-    UnCrouch();
-}
-
-void AMyALSCharacter::HandleWalkStarted()
+void AMyALSCharacter::ToggleWalkInput()
 {
     if (UMyALSCharacterMovementComponent* Movement = Cast<UMyALSCharacterMovementComponent>(GetCharacterMovement()))
     {
@@ -129,7 +96,7 @@ void AMyALSCharacter::HandleWalkStarted()
     }
 }
 
-void AMyALSCharacter::HandleSprintStarted()
+void AMyALSCharacter::StartSprintInput()
 {
     if (UMyALSCharacterMovementComponent* Movement = Cast<UMyALSCharacterMovementComponent>(GetCharacterMovement()))
     {
@@ -137,10 +104,23 @@ void AMyALSCharacter::HandleSprintStarted()
     }
 }
 
-void AMyALSCharacter::HandleSprintCompleted()
+void AMyALSCharacter::StopSprintInput()
 {
     if (UMyALSCharacterMovementComponent* Movement = Cast<UMyALSCharacterMovementComponent>(GetCharacterMovement()))
     {
         Movement->SetSprintHeld(false);
     }
 }
+
+void AMyALSCharacter::ResetControlInput()
+{
+    ClearMoveInput();
+    StopJumpInput();
+    UnCrouch();
+    if (UMyALSCharacterMovementComponent* Movement = Cast<UMyALSCharacterMovementComponent>(GetCharacterMovement()))
+    {
+        Movement->ResetGaitSelection();
+    }
+}
+
+

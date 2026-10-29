@@ -26,6 +26,7 @@ public:
 
     void ToggleWalk();
     void SetSprintHeld(bool bHeld);
+    void ResetGaitSelection();
     void SetMoveInput(const FVector2D& Input);
 
     // 地面目标步态；空中仍由引擎的空中速度规则处理。
