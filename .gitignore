@@ -1,0 +1,23 @@
+# Unreal generated data
+ALS/Binaries/
+ALS/DerivedDataCache/
+ALS/Intermediate/
+ALS/Saved/
+ALS/.vs/
+ALS/.vscode/
+ALS/Build/
+
+# GASP reference content is installed separately; track only our authored assets.
+ALS/Content/*
+!ALS/Content/MyALS/
+
+# Local editor and IDE state
+.vs/
+.vscode/
+*.sln
+*.suo
+*.VC.db
+*.opensdf
+*.sdf
+*.user
+*.code-workspace
